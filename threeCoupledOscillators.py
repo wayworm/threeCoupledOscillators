@@ -9,7 +9,7 @@ import random
 def createBackground(screen,midx,midy, number, mom_ratio):
             background = pygame.Surface(screen.get_size())
             background = background.convert()
-            background.fill((170, 238, 187))
+            background.fill((20, 20, 20))
             font = pygame.font.Font(None, 64)
             text = font.render(f"{number} oscillators!  momentum deviation: {mom_ratio:.1f}", True, (10, 10, 10))
             textpos = text.get_rect(centerx=midx, y=3.5*midy/2)
@@ -17,9 +17,8 @@ def createBackground(screen,midx,midy, number, mom_ratio):
             screen.blit(background, (0, 0))  # This line makes it actually appear
 
 
-
 class Spring:
-    def __init__(self, b1, b2, k, rest_length=None):
+    def __init__(self, b1, b2, k, visible, rest_length=None):
         self.b1 = b1
         self.b2 = b2
         self.k = k
@@ -27,6 +26,7 @@ class Spring:
             self.rest_length = np.linalg.norm(np.array(b1.pos) - np.array(b2.pos))
         else:
             self.rest_length = rest_length
+        self.visible = visible
     
     # def springForce(self, dt): OLD VERSION
     #     pos1 = np.array(self.b1.pos)
@@ -73,7 +73,7 @@ class Spring:
 
 
 class Ball:
-    def __init__(self, x, y, r, vx, vy,ax,ay, color="red"):
+    def __init__(self, x, y, r, vx, vy,ax,ay,visible, color="red"):
         self.x = x
         self.y = y
         self.pos = [x,y]
@@ -89,10 +89,26 @@ class Ball:
         self.ax = ax
         self.ay = ay
         self.mass = r**2 / 1000
+        self.trail = []  # list of past positions
+        self.max_trail_length = 50  # number of points to keep
+        self.visible = visible
 
 
     def draw(self, screen):
         pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.r)
+
+    # def drawTrail(self,screen,x=1280,y=720):
+    #     self.surf = pygame.Surface((x, y))
+    #     self.surf.set_colorkey((0, 0, 0))  # Optional: make black transparent
+    #     self.surf.set_alpha(255)  # Fully opaque 
+    #     screen.blit(self.surf, (0, 0))
+    #     pygame.draw.circle(screen, "darkred", self.pos, 2)
+
+
+    def drawTrail(self, screen):
+        if len(self.trail) > 1:
+            pygame.draw.lines(screen, (200, 200, 200), False, self.trail, 2)
+
 
     def get_pos(self):
         return (self.x, self.y)
@@ -121,6 +137,12 @@ class Ball:
 
         self.update_bounds()
         self.pos = [self.x, self.y]
+
+
+        self.trail.append((self.x, self.y))
+        if len(self.trail) > self.max_trail_length:
+            self.trail.pop(0)
+
 
         # Return old acceleration for use in velocity update
         return ax_old, ay_old
@@ -212,6 +234,9 @@ class Ball:
         self.ax = 0
         self.ay = 0
 
+    
+
+
 
 
 
@@ -228,8 +253,6 @@ def main():
     trail_surface.set_alpha(255)  # Fully opaque
 
 
-
-
     clock = pygame.time.Clock()
     running = True
     dt = 0
@@ -242,32 +265,33 @@ def main():
     k = k_const
     ball_count = 5
     radMin = 5
-    radMax = 25
+    radMax = 30
     y_start = int(0.3* midy)
     x_start = int(0.3 * midx)
     velRange = 4
+    draw_centre = False
+
     
     
     balls = []
+    #invisiBalls
     for i in range(ball_count):
          balls.append(Ball(midx + random.randrange(-x_start,x_start),
                            midy +  random.randrange(-y_start,y_start),
                            random.randrange(radMin,radMax),
                            random.randrange(-velRange,velRange),
-                           random.randrange(-velRange,velRange), 
+                           random.randrange(-velRange,velRange),
+                           False, 
                            0,0))
          
     initialMomentum = sum(np.sqrt(ball.vx**2 + ball.vy**2) * ball.mass for ball in balls)
 
-    
- 
-
-
     springs = []
     
+    #invisible Springs
     for i in range(ball_count -1):
         for j in range(i+1, ball_count):
-            springs.append(Spring(balls[i], balls[j], k, 200))
+            springs.append(Spring(balls[i], balls[j], k, False, 200))
 
  
     while running:
@@ -290,7 +314,9 @@ def main():
         for ball in balls:
             ball.reset_acceleration()
             ball_rect = pygame.Rect(ball.x - ball.r, ball.y - ball.r, ball.r * 2, ball.r * 2)
-            ball.draw(screen)
+            if ball.visible == True:
+                ball.draw(screen)
+            ball.drawTrail(screen)
             # Reset all accelerations
     
 
@@ -310,7 +336,6 @@ def main():
         # Verlet integration: update velocities using old and new acceleration
         for ball, (ax_old, ay_old) in zip(balls, old_accels):
             ball.verlet_finish_velocity(ax_old, ay_old, dt)
-
             ball.update_bounds()
             ball.wallCollision(screenh, screenw)
             poses[0] += ball.x
@@ -318,7 +343,9 @@ def main():
         centre = [poses[0] / len(balls) , poses[1] / len(balls)]
             
 
-        pygame.draw.circle(trail_surface, "darkred", (int(centre[0]), int(centre[1])), 2)
+        if draw_centre == True:
+            pygame.draw.circle(trail_surface, "darkred", (int(centre[0]), int(centre[1])), 2)
+        
         #centre_obj = pygame.Rect(centre[0],centre[1],30,30)
         #pygame.draw.rect(screen, "red", centre_obj )
 
@@ -331,19 +358,16 @@ def main():
 
 
 
+
         for spring in springs:
-                spring.drawSpring(screen,"blue")
+                if spring.visible == True:
+                    spring.drawSpring(screen,"blue")
                 spring.springForce()
-
-
-
-
 
 
         # for i in range(ball_count -1):
         #     for j in range(i+1, ball_count):
         #         springs.append(Spring(balls[i], balls[j], 0.5, 600))
-
 
         # flip() the display 
         pygame.display.flip()
@@ -352,7 +376,6 @@ def main():
         # dt is delta time in seconds since last frame, used for framerate-
         fps = 600
         dt = clock.tick(fps) / 1000
-
     pygame.quit()
 
 
