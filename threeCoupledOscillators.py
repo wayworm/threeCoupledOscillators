@@ -107,7 +107,7 @@ class Ball:
 
     def drawTrail(self, screen):
         if len(self.trail) > 1:
-            pygame.draw.lines(screen, (200, 200, 200), False, self.trail, 2)
+            pygame.draw.lines(screen, (200, 200, 200), True, self.trail, 2)
 
 
     def get_pos(self):
@@ -236,20 +236,13 @@ class Ball:
 
     
 
-
-
-
-
-
-
-
 def main():
             
     pygame.init()
     screen = pygame.display.set_mode((1280, 720))
 
     trail_surface = pygame.Surface((1280, 720))
-    trail_surface.set_colorkey((0, 0, 0))  # Optional: make black transparent
+    trail_surface.set_colorkey((100, 100, 100))  # Optional: make black transparent
     trail_surface.set_alpha(255)  # Fully opaque
 
 
@@ -263,13 +256,13 @@ def main():
     midy = screenh / 2
     k_const = 1
     k = k_const
-    ball_count = 5
+    ball_count = 25
     radMin = 5
     radMax = 30
     y_start = int(0.3* midy)
     x_start = int(0.3 * midx)
     velRange = 4
-    draw_centre = False
+    draw_centre = True
 
     
     
@@ -281,7 +274,7 @@ def main():
                            random.randrange(radMin,radMax),
                            random.randrange(-velRange,velRange),
                            random.randrange(-velRange,velRange),
-                           False, 
+                           True, 
                            0,0))
          
     initialMomentum = sum(np.sqrt(ball.vx**2 + ball.vy**2) * ball.mass for ball in balls)
@@ -291,7 +284,7 @@ def main():
     #invisible Springs
     for i in range(ball_count -1):
         for j in range(i+1, ball_count):
-            springs.append(Spring(balls[i], balls[j], k, False, 200))
+            springs.append(Spring(balls[i], balls[j], k, True, 200))
 
  
     while running:
@@ -316,7 +309,7 @@ def main():
             ball_rect = pygame.Rect(ball.x - ball.r, ball.y - ball.r, ball.r * 2, ball.r * 2)
             if ball.visible == True:
                 ball.draw(screen)
-            ball.drawTrail(screen)
+            #ball.drawTrail(screen)
             # Reset all accelerations
     
 
